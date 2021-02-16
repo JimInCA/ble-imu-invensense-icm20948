@@ -140,8 +140,8 @@ int16_t inv_icm20948_init(inv_icm20948_state *st)
     // set the accelerometer full scale range
     inv_icm20948_config_accel(st->chip_config->accl_fsr);
 
-    // clear the sleep enable bit
-    //inv_icm20948_set_sleep_mode(true);
+    // set the sleep enable bit
+    inv_icm20948_set_sleep_mode(true);
 
     return 0;
 }

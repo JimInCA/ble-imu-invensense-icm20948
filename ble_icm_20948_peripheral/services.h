@@ -75,7 +75,8 @@
 #define BLE_UUID_SERVICE_UUID                0xface // Just a random, but recognizable value
 
 // Defining 16-bit characteristic UUID
-#define BLE_UUID_CHARACTERISTC_UUID          0xfade // Just a random, but recognizable value
+#define BLE_UUID_CHARACTERISTC_IMU_DATA      0xfade // IMU Data
+#define BLE_UUID_CHARACTERISTC_IMU_DVID      0xfeed // IMU Device ID
 
 // This structure contains various status information for the service. 
 // The name is based on the naming convention used in Nordics SDKs. 
@@ -86,7 +87,9 @@ typedef struct
     uint16_t                    conn_handle;    // Handle of the current connection (as provided by the BLE stack, is BLE_CONN_HANDLE_INVALID if not in a connection).
     uint16_t                    service_handle; // Handle of Our Service (as provided by the BLE stack).
     // add handles for the characteristic attributes to the struct
-    ble_gatts_char_handles_t    char_handles;
+    ble_gatts_char_handles_t    char_handle_data;
+    ble_gatts_char_handles_t    char_handle_dvid;
+    uint32_t                    deviceid;
 } ble_os_t;
 
 // Function for handling BLE Stack events related to the service and characteristic.
@@ -113,5 +116,7 @@ void service_init(ble_os_t * p_service);
 //     length          length of characteristic value
 //
 void imu_characteristic_update(ble_os_t *p_service, IMU_DATA *imu_data, int16_t length);
+
+void imu_dvid_characteristic_update(ble_os_t *p_service);
 
 #endif  // _SERVICES_H__

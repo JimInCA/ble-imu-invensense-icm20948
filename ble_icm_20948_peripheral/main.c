@@ -133,7 +133,6 @@ void in_pin_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action);
 static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;                        // Handle of the current connection
 ble_os_t m_service;   // declare a service structure for the application
 extern inv_icm20948_state st;
-static volatile uint32_t deviceid;
 
 // Declare an app_timer id variable and define the timer interval and define a timer interval.
 //APP_TIMER_DEF(m_char_timer_id);
@@ -341,6 +340,7 @@ static void services_init(void)
     APP_ERROR_CHECK(err_code);
 
     // add code to initialize the services used by the application
+    m_service.deviceid = NRF_FICR->DEVICEID0;
     service_init(&m_service);
 }
 
@@ -471,11 +471,13 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
     {
         case BLE_GAP_EVT_DISCONNECTED:
             NRF_LOG_INFO("Disconnected.");
+            inv_icm20948_set_sleep_mode(true);
             // LED indication will be changed when advertising starts
             break;
 
         case BLE_GAP_EVT_CONNECTED:
             NRF_LOG_INFO("Connected.");
+            inv_icm20948_set_sleep_mode(false);
             err_code = bsp_indication_set(BSP_INDICATE_CONNECTED);
             APP_ERROR_CHECK(err_code);
             m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
@@ -812,6 +814,7 @@ int main(void)
     buttons_leds_init(&erase_bonds);
     power_management_init();
     imu_init();
+    inv_icm20948_set_sleep_mode(true);  // start imu once connection is made
     ble_stack_init();
     gap_params_init();
     gatt_init();
@@ -821,8 +824,6 @@ int main(void)
 
     conn_params_init();
     peer_manager_init();
-
-    deviceid = NRF_FICR->DEVICEID0;
 
     // start execution
     NRF_LOG_INFO("BLE IMU evaluation started.");
@@ -841,7 +842,7 @@ int main(void)
             //inv_icm20948_read_imu(&imu_data);
             inv_icm20948_read_imu_fifo(&st, &imu_data);
             data_ready = false;
-            imu_data.deviceid = deviceid;
+            imu_data.deviceid = m_service.deviceid;
             nrf_gpio_pin_set(PIN_OUT);
             imu_characteristic_update(&m_service, &imu_data, sizeof(IMU_DATA));
         }

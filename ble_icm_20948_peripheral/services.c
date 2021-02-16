@@ -71,6 +71,37 @@
 
 #include "imu.h"
 
+void imu_dvid_characteristic_update(ble_os_t *p_service);
+
+/**@brief Function for handling the @ref BLE_GATTS_EVT_WRITE event from the SoftDevice.
+ *
+ * @param[in] p_service     Nordic UART Service structure.
+ * @param[in] p_ble_evt Pointer to the event received from BLE stack.
+ */
+static void on_write(ble_os_t * p_service, ble_evt_t const * p_ble_evt)
+{
+    ret_code_t                    err_code;
+
+    ble_gatts_evt_write_t const * p_evt_write = &p_ble_evt->evt.gatts_evt.params.write;
+
+    
+    if ((p_evt_write->handle == p_service->char_handle_data.cccd_handle) &&
+        (p_evt_write->len == 2))
+    {
+        NRF_LOG_INFO("data cccd write");
+    }
+    //else if (p_evt_write->handle == p_service->char_handle_dvid.value_handle)
+    //{
+    //    NRF_LOG_INFO("device id write");
+    //    imu_dvid_characteristic_update(p_service);
+    //}
+    else
+    {
+        // Do Nothing. This event is not relevant for this service.
+    }
+
+}
+
 // Declaration of a function that will take care of some housekeeping of ble connections 
 // related to the service and characteristic.
 void ble_service_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context)
@@ -85,10 +116,11 @@ void ble_service_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context)
         case BLE_GAP_EVT_DISCONNECTED:
             p_service->conn_handle = BLE_CONN_HANDLE_INVALID;
             break;
-        /*
         case BLE_GATTS_EVT_WRITE:
+            on_write(p_service, p_ble_evt);
             NRF_LOG_INFO("BLE_GATTS_EVT_WRITE");
             break;
+        /*
         case BLE_GATTS_EVT_HVN_TX_COMPLETE:
             NRF_LOG_INFO("BLE_GATTS_EVT_HVN_TX_COMPLETE");
             break;
@@ -103,13 +135,13 @@ void ble_service_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context)
 //
 //     p_service  our Service structure
 //
-static uint32_t char_add(ble_os_t * p_service)
+static uint32_t char_add_data(ble_os_t * p_service)
 {
     // add a custom characteristic UUID
     uint32_t            err_code;
     ble_uuid_t          char_uuid;
     ble_uuid128_t       base_uuid = BLE_UUID_BASE_UUID;
-    char_uuid.uuid      = BLE_UUID_CHARACTERISTC_UUID;
+    char_uuid.uuid      = BLE_UUID_CHARACTERISTC_IMU_DATA;
     err_code = sd_ble_uuid_vs_add(&base_uuid, &char_uuid.type);
     APP_ERROR_CHECK(err_code);
 
@@ -117,7 +149,7 @@ static uint32_t char_add(ble_os_t * p_service)
     ble_gatts_char_md_t char_md;
     memset(&char_md, 0, sizeof(char_md));
     char_md.char_props.read = 1;
-    char_md.char_props.write = 1;
+    char_md.char_props.write = 0;
 
     // configuring Client Characteristic Configuration Descriptor metadata and add to char_md structure
     ble_gatts_attr_md_t cccd_md;
@@ -154,7 +186,73 @@ static uint32_t char_add(ble_os_t * p_service)
     err_code = sd_ble_gatts_characteristic_add(p_service->service_handle,
                                                &char_md,
                                                &attr_char_value,
-                                               &p_service->char_handles);
+                                               &p_service->char_handle_data);
+    APP_ERROR_CHECK(err_code);
+
+    return NRF_SUCCESS;
+}
+
+// Function for adding the new characterstic to "Our service" that we initiated in the previous tutorial. 
+//
+//     p_service  our Service structure
+//
+static uint32_t char_add_dvid(ble_os_t * p_service)
+{
+    // add a custom characteristic UUID
+    uint32_t            err_code;
+    ble_uuid_t          char_uuid;
+    ble_uuid128_t       base_uuid = BLE_UUID_BASE_UUID;
+    char_uuid.uuid      = BLE_UUID_CHARACTERISTC_IMU_DVID;
+    err_code = sd_ble_uuid_vs_add(&base_uuid, &char_uuid.type);
+    APP_ERROR_CHECK(err_code);
+
+    // add read/write properties to the characteristic
+    ble_gatts_char_md_t char_md;
+    memset(&char_md, 0, sizeof(char_md));
+    char_md.char_props.read = 1;
+    char_md.char_props.write = 0;
+
+    // configuring Client Characteristic Configuration Descriptor metadata and add to char_md structure
+    ble_gatts_attr_md_t cccd_md;
+    memset(&cccd_md, 0, sizeof(cccd_md));
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
+    cccd_md.vloc                = BLE_GATTS_VLOC_STACK;    
+    char_md.p_cccd_md           = &cccd_md;
+    char_md.char_props.notify   = 0;
+
+    // configure the attribute metadata
+    ble_gatts_attr_md_t attr_md;
+    memset(&attr_md, 0, sizeof(attr_md));
+    attr_md.vloc        = BLE_GATTS_VLOC_STACK;
+
+    // set read/write security levels to the characteristic
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.write_perm);
+
+    // configure the characteristic value attribute
+    ble_gatts_attr_t    attr_char_value;
+    memset(&attr_char_value, 0, sizeof(attr_char_value));
+    attr_char_value.p_uuid      = &char_uuid;
+    attr_char_value.p_attr_md   = &attr_md;
+
+    // set characteristic length in number of bytes
+    // This is where I need to adjust the size of the characteristic data.  JTN
+    attr_char_value.max_len     = sizeof(uint32_t);
+    attr_char_value.init_len    = sizeof(uint32_t);
+    //uint8_t value[sizeof(uint32_t)]            = {0xaa,0x55,0xaa,0x55};
+    uint8_t value[sizeof(uint32_t)];
+    for (int32_t i = 0, j = 0; i < sizeof(uint32_t); i++, j+=8)
+    {
+        value[i] = (p_service->deviceid >> j) & 0x000000ff;
+    }
+    attr_char_value.p_value     = value;
+
+    // add the new characteristic to the service
+    err_code = sd_ble_gatts_characteristic_add(p_service->service_handle,
+                                               &char_md,
+                                               &attr_char_value,
+                                               &p_service->char_handle_dvid);
     APP_ERROR_CHECK(err_code);
 
     return NRF_SUCCESS;
@@ -186,8 +284,9 @@ void service_init(ble_os_t * p_service)
 
     APP_ERROR_CHECK(err_code);
 
-    // call the function char_add() to add the new characteristic to the service.
-    char_add(p_service);
+    // call the function char_add_[x]() to add the new characteristics to the service.
+    char_add_data(p_service);
+    char_add_dvid(p_service);
 }
 
 // Function to be called when updating characteristic value with IMU data
@@ -201,7 +300,7 @@ void imu_characteristic_update(ble_os_t *p_service, IMU_DATA *imu_data, int16_t 
         ble_gatts_hvx_params_t hvx_params;
         memset(&hvx_params, 0, sizeof(hvx_params));
 
-        hvx_params.handle = p_service->char_handles.value_handle;
+        hvx_params.handle = p_service->char_handle_data.value_handle;
         hvx_params.type   = BLE_GATT_HVX_NOTIFICATION;
         hvx_params.offset = 0;
         hvx_params.p_len  = &len;
@@ -213,6 +312,32 @@ void imu_characteristic_update(ble_os_t *p_service, IMU_DATA *imu_data, int16_t 
             nrf_gpio_pin_clear(PIN_OUT);
         }
         else
+        {
+            NRF_LOG_INFO("sd_ble_gatts_hvx() returned error code %d", err_code);
+        }
+    }
+}
+
+
+// Function to be called when updating characteristic value with IMU data
+void imu_dvid_characteristic_update(ble_os_t *p_service)
+{
+    uint32_t err_code;
+    // update characteristic value
+    if (p_service->conn_handle != BLE_CONN_HANDLE_INVALID)
+    {
+        uint16_t               len = sizeof(uint32_t);
+        ble_gatts_hvx_params_t hvx_params;
+        memset(&hvx_params, 0, sizeof(hvx_params));
+
+        hvx_params.handle = p_service->char_handle_dvid.value_handle;
+        hvx_params.type   = BLE_GATT_HVX_NOTIFICATION;
+        hvx_params.offset = 0;
+        hvx_params.p_len  = &len;
+        hvx_params.p_data = (uint8_t*)&(p_service->deviceid);  
+
+        err_code = sd_ble_gatts_hvx(p_service->conn_handle, &hvx_params);
+        if (err_code != NRF_SUCCESS)
         {
             NRF_LOG_INFO("sd_ble_gatts_hvx() returned error code %d", err_code);
         }

@@ -211,7 +211,7 @@ static void db_disc_handler(ble_db_discovery_evt_t * p_evt)
     ble_nus_c_on_db_disc_evt(&m_ble_nus_c, p_evt);
 }
 
-/*
+
 static ret_code_t write_uart(uint8_t value, char* string)
 {
     ret_code_t ret_val;
@@ -227,7 +227,7 @@ static ret_code_t write_uart(uint8_t value, char* string)
 
     return ret_val;
 }
-*/
+
 
 /**@brief Function for handling characters received by the Nordic UART Service (NUS).
  *
@@ -272,7 +272,7 @@ static void ble_nus_chars_received_uart_print(uint8_t * p_data, uint16_t data_le
         } while (ret_val == NRF_ERROR_BUSY);
     }
 */
-/*
+
     ret_code_t ret_val;
 
     char ascii[16] = {'0', '1', '2', '3', '4', '5', '6', '7',
@@ -306,14 +306,15 @@ static void ble_nus_chars_received_uart_print(uint8_t * p_data, uint16_t data_le
     }
     ret_val = write_uart('\r', "app_uart_put failed for \\r.");
     ret_val = write_uart('\n', "app_uart_put failed for \\n.");
-*/
 
+/*
     // This makes the output to the UART compatable with my python imu gui.
     IMU_DATA *imu_data = (IMU_DATA*)p_data;
     uint8_t message[128];
     static uint32_t count = 0;
     uint32_t i;
     
+    // calling sprintf slows the system down tremendously.
     sprintf((char*)message, 
            "%ld: "
            "ax = %d, ay = %d, az = %d, "
@@ -325,7 +326,7 @@ static void ble_nus_chars_received_uart_print(uint8_t * p_data, uint16_t data_le
     {
         app_uart_put(message[i]);
     } while (message[i++] != '\n');
-
+*/
 }
 
 
