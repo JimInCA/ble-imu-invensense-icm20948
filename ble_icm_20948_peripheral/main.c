@@ -472,6 +472,8 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
         case BLE_GAP_EVT_DISCONNECTED:
             NRF_LOG_INFO("Disconnected.");
             inv_icm20948_set_sleep_mode(true);
+            m_service.is_imu_data_notification_enabled = false;
+            nrf_gpio_pin_clear(PIN_OUT);
             // LED indication will be changed when advertising starts
             break;
 
