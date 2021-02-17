@@ -72,23 +72,25 @@
 #define BLE_UUID_BASE_UUID              {{0xd9, 0xba, 0xe8, 0xe2, 0x59, 0x32, 0x8e, 0xa8, 0x20, 0x4a, 0x70, 0x0e, 0xbc, 0xa4, 0x1a, 0x5c}} // 128-bit base UUID
 
 // Defining 16-bit service UUID
-#define BLE_UUID_SERVICE_UUID                0xface // Just a random, but recognizable value
+#define BLE_UUID_SERVICE_UUID                    0xface // Just a random, but recognizable value
 
 // Defining 16-bit characteristic UUID
-#define BLE_UUID_CHARACTERISTC_IMU_DATA      0xfade // IMU Data
-#define BLE_UUID_CHARACTERISTC_IMU_DVID      0xfeed // IMU Device ID
+#define BLE_UUID_CHARACTERISTC_IMU_DATA          0xfade // IMU Data
+#define BLE_UUID_CHARACTERISTC_IMU_DEVICEID      0xfeed // IMU Device ID
+#define BLE_UUID_CHARACTERISTC_IMU_RESOLUTION    0xbead // IMU MEMS Resolution
 
 // This structure contains various status information for the service. 
 // The name is based on the naming convention used in Nordics SDKs. 
-// 'ble’ indicates that it is a Bluetooth Low Energy relevant structure and 
-// ‘os’ is short for Our Service). 
+// 'ble' indicates that it is a Bluetooth Low Energy relevant structure and 
+// 'os' is short for Our Service). 
 typedef struct
 {
     uint16_t                    conn_handle;    // Handle of the current connection (as provided by the BLE stack, is BLE_CONN_HANDLE_INVALID if not in a connection).
     uint16_t                    service_handle; // Handle of Our Service (as provided by the BLE stack).
     // add handles for the characteristic attributes to the struct
     ble_gatts_char_handles_t    char_handle_data;
-    ble_gatts_char_handles_t    char_handle_dvid;
+    ble_gatts_char_handles_t    char_handle_deviceid;
+    ble_gatts_char_handles_t    char_handle_resolution;
     uint32_t                    deviceid;
 } ble_os_t;
 
@@ -117,6 +119,7 @@ void service_init(ble_os_t * p_service);
 //
 void imu_characteristic_update(ble_os_t *p_service, IMU_DATA *imu_data, int16_t length);
 
-void imu_dvid_characteristic_update(ble_os_t *p_service);
+void imu_deviceid_characteristic_update(ble_os_t *p_service);
+void imu_resolution_characteristic_update(ble_os_t *p_service, uint32_t resolution);
 
 #endif  // _SERVICES_H__

@@ -71,7 +71,7 @@
 
 #include "imu.h"
 
-void imu_dvid_characteristic_update(ble_os_t *p_service);
+extern inv_icm20948_state st;
 
 /**@brief Function for handling the @ref BLE_GATTS_EVT_WRITE event from the SoftDevice.
  *
@@ -90,11 +90,28 @@ static void on_write(ble_os_t * p_service, ble_evt_t const * p_ble_evt)
     {
         NRF_LOG_INFO("data cccd write");
     }
-    //else if (p_evt_write->handle == p_service->char_handle_dvid.value_handle)
+    //else if (p_evt_write->handle == p_service->char_handle_deviceid.value_handle)
     //{
     //    NRF_LOG_INFO("device id write");
-    //    imu_dvid_characteristic_update(p_service);
+    //    imu_deviceid_characteristic_update(p_service);
     //}
+    else if (p_evt_write->handle == p_service->char_handle_resolution.value_handle)
+    {
+        NRF_LOG_INFO("resolution write");
+        uint16_t length = p_evt_write->len;
+        uint32_t value = 0;
+        switch (length)
+        {
+        case 4: value += ((p_evt_write->data[3] << 24) & 0xff000000);
+        case 3: value += ((p_evt_write->data[2] << 16) & 0x00ff0000);
+        case 2: value += ((p_evt_write->data[1] <<  8) & 0x0000ff00);
+        case 1: value += ((p_evt_write->data[0] <<  0) & 0x000000ff);
+                imu_resolution_characteristic_update(p_service, value);
+                break;
+        default:
+                break;
+        }
+    }
     else
     {
         // Do Nothing. This event is not relevant for this service.
@@ -196,13 +213,13 @@ static uint32_t char_add_data(ble_os_t * p_service)
 //
 //     p_service  our Service structure
 //
-static uint32_t char_add_dvid(ble_os_t * p_service)
+static uint32_t char_add_deviceid(ble_os_t * p_service)
 {
     // add a custom characteristic UUID
     uint32_t            err_code;
     ble_uuid_t          char_uuid;
     ble_uuid128_t       base_uuid = BLE_UUID_BASE_UUID;
-    char_uuid.uuid      = BLE_UUID_CHARACTERISTC_IMU_DVID;
+    char_uuid.uuid      = BLE_UUID_CHARACTERISTC_IMU_DEVICEID;
     err_code = sd_ble_uuid_vs_add(&base_uuid, &char_uuid.type);
     APP_ERROR_CHECK(err_code);
 
@@ -252,7 +269,72 @@ static uint32_t char_add_dvid(ble_os_t * p_service)
     err_code = sd_ble_gatts_characteristic_add(p_service->service_handle,
                                                &char_md,
                                                &attr_char_value,
-                                               &p_service->char_handle_dvid);
+                                               &p_service->char_handle_deviceid);
+    APP_ERROR_CHECK(err_code);
+
+    return NRF_SUCCESS;
+}
+
+// Function for adding the new characterstic to "Our service" that we initiated in the previous tutorial. 
+//
+//     p_service  our Service structure
+//
+static uint32_t char_add_resolution(ble_os_t * p_service)
+{
+    // add a custom characteristic UUID
+    uint32_t            err_code;
+    ble_uuid_t          char_uuid;
+    ble_uuid128_t       base_uuid = BLE_UUID_BASE_UUID;
+    char_uuid.uuid      = BLE_UUID_CHARACTERISTC_IMU_RESOLUTION;
+    err_code = sd_ble_uuid_vs_add(&base_uuid, &char_uuid.type);
+    APP_ERROR_CHECK(err_code);
+
+    // add read/write properties to the characteristic
+    ble_gatts_char_md_t char_md;
+    memset(&char_md, 0, sizeof(char_md));
+    char_md.char_props.read = 1;
+    char_md.char_props.write = 1;
+
+    // configuring Client Characteristic Configuration Descriptor metadata and add to char_md structure
+    ble_gatts_attr_md_t cccd_md;
+    memset(&cccd_md, 0, sizeof(cccd_md));
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
+    cccd_md.vloc                = BLE_GATTS_VLOC_STACK;    
+    char_md.p_cccd_md           = &cccd_md;
+    char_md.char_props.notify   = 1;
+
+    // configure the attribute metadata
+    ble_gatts_attr_md_t attr_md;
+    memset(&attr_md, 0, sizeof(attr_md));
+    attr_md.vloc        = BLE_GATTS_VLOC_STACK;
+
+    // set read/write security levels to the characteristic
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.write_perm);
+
+    // configure the characteristic value attribute
+    ble_gatts_attr_t    attr_char_value;
+    memset(&attr_char_value, 0, sizeof(attr_char_value));
+    attr_char_value.p_uuid      = &char_uuid;
+    attr_char_value.p_attr_md   = &attr_md;
+
+    // set characteristic length in number of bytes
+    // This is where I need to adjust the size of the characteristic data.  JTN
+    attr_char_value.max_len     = sizeof(uint32_t);
+    attr_char_value.init_len    = sizeof(uint32_t);
+    uint8_t value[sizeof(uint32_t)];
+    memset(&value, 0, sizeof(uint32_t));
+    value[0] = st.chip_config->accl_fsr;
+    value[1] = st.chip_config->gyro_fsr;
+    value[2] = st.chip_config->magn_fsr;
+    attr_char_value.p_value     = value;
+
+    // add the new characteristic to the service
+    err_code = sd_ble_gatts_characteristic_add(p_service->service_handle,
+                                               &char_md,
+                                               &attr_char_value,
+                                               &p_service->char_handle_resolution);
     APP_ERROR_CHECK(err_code);
 
     return NRF_SUCCESS;
@@ -286,7 +368,8 @@ void service_init(ble_os_t * p_service)
 
     // call the function char_add_[x]() to add the new characteristics to the service.
     char_add_data(p_service);
-    char_add_dvid(p_service);
+    char_add_deviceid(p_service);
+    char_add_resolution(p_service);
 }
 
 // Function to be called when updating characteristic value with IMU data
@@ -313,14 +396,14 @@ void imu_characteristic_update(ble_os_t *p_service, IMU_DATA *imu_data, int16_t 
         }
         else
         {
-            NRF_LOG_INFO("sd_ble_gatts_hvx() returned error code %d", err_code);
+            NRF_LOG_INFO("sd_ble_gatts_hvx(imu-data) returned error code 0x%04x", err_code);
         }
     }
 }
 
 
 // Function to be called when updating characteristic value with IMU data
-void imu_dvid_characteristic_update(ble_os_t *p_service)
+void imu_deviceid_characteristic_update(ble_os_t *p_service)
 {
     uint32_t err_code;
     // update characteristic value
@@ -330,7 +413,7 @@ void imu_dvid_characteristic_update(ble_os_t *p_service)
         ble_gatts_hvx_params_t hvx_params;
         memset(&hvx_params, 0, sizeof(hvx_params));
 
-        hvx_params.handle = p_service->char_handle_dvid.value_handle;
+        hvx_params.handle = p_service->char_handle_deviceid.value_handle;
         hvx_params.type   = BLE_GATT_HVX_NOTIFICATION;
         hvx_params.offset = 0;
         hvx_params.p_len  = &len;
@@ -339,7 +422,43 @@ void imu_dvid_characteristic_update(ble_os_t *p_service)
         err_code = sd_ble_gatts_hvx(p_service->conn_handle, &hvx_params);
         if (err_code != NRF_SUCCESS)
         {
-            NRF_LOG_INFO("sd_ble_gatts_hvx() returned error code %d", err_code);
+            NRF_LOG_INFO("sd_ble_gatts_hvx(deviceid) returned error code 0x%04x", err_code);
         }
+    }
+}
+
+
+// Function to be called when updating characteristic value with IMU data
+void imu_resolution_characteristic_update(ble_os_t *p_service, uint32_t resolution)
+{
+    uint32_t err_code = 0xffffffff;
+    // update characteristic value
+    if (p_service->conn_handle != BLE_CONN_HANDLE_INVALID)
+    {
+        uint16_t               len = sizeof(uint32_t);
+        ble_gatts_hvx_params_t hvx_params;
+        memset(&hvx_params, 0, sizeof(hvx_params));
+
+        hvx_params.handle = p_service->char_handle_resolution.value_handle;
+        hvx_params.type   = BLE_GATT_HVX_NOTIFICATION;
+        hvx_params.offset = 0;
+        hvx_params.p_len  = &len;
+        hvx_params.p_data = (uint8_t*)&(resolution);  
+
+        err_code = sd_ble_gatts_hvx(p_service->conn_handle, &hvx_params);
+        if (err_code != NRF_SUCCESS)
+        {
+            NRF_LOG_INFO("sd_ble_gatts_hvx(resolution) returned error code 0x%04x", err_code);
+        }
+    }
+
+    if (err_code == NRF_SUCCESS)
+    {
+        st.chip_config->accl_fsr = ((resolution & 0x00000003) >> 0);
+        st.chip_config->gyro_fsr = ((resolution & 0x00000300) >> 8);
+        // set the accelerometer full scale range
+        inv_icm20948_config_accel(st.chip_config->accl_fsr);
+        // set the gyro full scale range
+        inv_icm20948_config_gyro(st.chip_config->gyro_fsr);
     }
 }
