@@ -230,7 +230,7 @@ void ble_nus_c_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context);
  * @retval  NRF_SUCCESS If the operation was successful. 
  * @retval  err_code 	Otherwise, this API propagates the error code returned by function @ref nrf_ble_gq_item_add.
  */
-uint32_t ble_nus_c_tx_notif_enable(ble_nus_c_t * p_ble_nus_c);
+uint32_t ble_nus_c_tx_notif_enable(ble_nus_c_t * p_ble_nus_c, bool notify);
 
 
 /**@brief Function for sending a string to the server.

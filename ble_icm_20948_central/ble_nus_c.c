@@ -232,7 +232,7 @@ static uint32_t cccd_configure(ble_nus_c_t * p_ble_nus_c, bool notification_enab
 }
 
 
-uint32_t ble_nus_c_tx_notif_enable(ble_nus_c_t * p_ble_nus_c)
+uint32_t ble_nus_c_tx_notif_enable(ble_nus_c_t * p_ble_nus_c, bool notify)
 {
     VERIFY_PARAM_NOT_NULL(p_ble_nus_c);
 
@@ -242,7 +242,7 @@ uint32_t ble_nus_c_tx_notif_enable(ble_nus_c_t * p_ble_nus_c)
     {
         return NRF_ERROR_INVALID_STATE;
     }
-    return cccd_configure(p_ble_nus_c, true);
+    return cccd_configure(p_ble_nus_c, notify);
 }
 
 
