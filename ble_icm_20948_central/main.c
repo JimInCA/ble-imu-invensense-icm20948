@@ -353,6 +353,7 @@ void uart_event_handle(app_uart_evt_t * p_event)
                 (data_array[index - 1] == '\r') ||
                 (index >= (m_ble_nus_max_data_len)))
             {
+                /*
                 NRF_LOG_DEBUG("Ready to send data over BLE NUS");
                 NRF_LOG_HEXDUMP_DEBUG(data_array, index);
 
@@ -364,6 +365,22 @@ void uart_event_handle(app_uart_evt_t * p_event)
                         APP_ERROR_CHECK(ret_val);
                     }
                 } while (ret_val == NRF_ERROR_RESOURCES);
+                */
+
+                ret_val = NRF_SUCCESS;  // initialize to good value in case user input something other than r/s
+                if ((index >= 2) && ((data_array[0] == 'r') || (data_array[0] == 'R')))
+                {
+                    ret_val = ble_nus_c_tx_notif_enable(&m_ble_nus_c, true);
+                }
+                else if ((index >= 2) && ((data_array[0] == 's') || (data_array[0] == 'S')))
+                {
+                    ret_val = ble_nus_c_tx_notif_enable(&m_ble_nus_c, false);
+                }
+                if ((ret_val != NRF_SUCCESS) && (ret_val != NRF_ERROR_BUSY))
+                {
+                    NRF_LOG_ERROR("ble_nus_c_tx_notif_enable() failed to set notify");
+                    APP_ERROR_CHECK(ret_val);
+                }
 
                 index = 0;
             }
@@ -406,7 +423,7 @@ static void ble_nus_c_evt_handler(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t con
             err_code = ble_nus_c_handles_assign(p_ble_nus_c, p_ble_nus_evt->conn_handle, &p_ble_nus_evt->handles);
             APP_ERROR_CHECK(err_code);
 
-            err_code = ble_nus_c_tx_notif_enable(p_ble_nus_c);
+            err_code = ble_nus_c_tx_notif_enable(p_ble_nus_c, false);
             APP_ERROR_CHECK(err_code);
             NRF_LOG_INFO("Connected to device with Nordic UART Service.");
             break;
