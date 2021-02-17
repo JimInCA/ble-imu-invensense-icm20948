@@ -91,6 +91,8 @@ typedef struct
     ble_gatts_char_handles_t    char_handle_data;
     ble_gatts_char_handles_t    char_handle_deviceid;
     ble_gatts_char_handles_t    char_handle_resolution;
+    bool                        is_imu_data_notification_enabled;
+    bool                        is_imu_data_transfer_complete;
     uint32_t                    deviceid;
 } ble_os_t;
 
@@ -117,9 +119,9 @@ void service_init(ble_os_t * p_service);
 //     imu_data        new characteristic value
 //     length          length of characteristic value
 //
-void imu_characteristic_update(ble_os_t *p_service, IMU_DATA *imu_data, int16_t length);
+void characteristic_update_imu_data(ble_os_t *p_service, IMU_DATA *imu_data, int16_t length);
 
-void imu_deviceid_characteristic_update(ble_os_t *p_service);
-void imu_resolution_characteristic_update(ble_os_t *p_service, uint32_t resolution);
+void characteristic_update_imu_deviceid(ble_os_t *p_service);
+void characteristic_update_imu_resolution(ble_os_t *p_service, uint32_t resolution);
 
 #endif  // _SERVICES_H__

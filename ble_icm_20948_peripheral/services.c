@@ -81,6 +81,7 @@ extern inv_icm20948_state st;
 static void on_write(ble_os_t * p_service, ble_evt_t const * p_ble_evt)
 {
     ret_code_t                    err_code;
+    bool is_notification_enabled;
 
     ble_gatts_evt_write_t const * p_evt_write = &p_ble_evt->evt.gatts_evt.params.write;
 
@@ -89,11 +90,23 @@ static void on_write(ble_os_t * p_service, ble_evt_t const * p_ble_evt)
         (p_evt_write->len == 2))
     {
         NRF_LOG_INFO("data cccd write");
+        if (ble_srv_is_notification_enabled(p_evt_write->data))
+        {
+            inv_icm20948_set_sleep_mode(false);
+            p_service->is_imu_data_notification_enabled = true;
+            NRF_LOG_INFO("notification enabled");
+        }
+        else
+        {
+            inv_icm20948_set_sleep_mode(true);
+            p_service->is_imu_data_notification_enabled = false;
+            NRF_LOG_INFO("notification disabled");
+        }
     }
     //else if (p_evt_write->handle == p_service->char_handle_deviceid.value_handle)
     //{
     //    NRF_LOG_INFO("device id write");
-    //    imu_deviceid_characteristic_update(p_service);
+    //    characteristic_update_imu_deviceid(p_service);
     //}
     else if (p_evt_write->handle == p_service->char_handle_resolution.value_handle)
     {
@@ -106,7 +119,7 @@ static void on_write(ble_os_t * p_service, ble_evt_t const * p_ble_evt)
         case 3: value += ((p_evt_write->data[2] << 16) & 0x00ff0000);
         case 2: value += ((p_evt_write->data[1] <<  8) & 0x0000ff00);
         case 1: value += ((p_evt_write->data[0] <<  0) & 0x000000ff);
-                imu_resolution_characteristic_update(p_service, value);
+                characteristic_update_imu_resolution(p_service, value);
                 break;
         default:
                 break;
@@ -134,14 +147,13 @@ void ble_service_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context)
             p_service->conn_handle = BLE_CONN_HANDLE_INVALID;
             break;
         case BLE_GATTS_EVT_WRITE:
+            //NRF_LOG_INFO("BLE_GATTS_EVT_WRITE");
             on_write(p_service, p_ble_evt);
-            NRF_LOG_INFO("BLE_GATTS_EVT_WRITE");
             break;
-        /*
         case BLE_GATTS_EVT_HVN_TX_COMPLETE:
-            NRF_LOG_INFO("BLE_GATTS_EVT_HVN_TX_COMPLETE");
+            //NRF_LOG_INFO("BLE_GATTS_EVT_HVN_TX_COMPLETE");
+            p_service->is_imu_data_transfer_complete = true;
             break;
-        */
         default:
             // no implementation needed
             break;
@@ -359,6 +371,10 @@ void service_init(ble_os_t * p_service)
     // Set the service connection handle to default value. I.e. an invalid handle since we are not yet in a connection.
     p_service->conn_handle = BLE_CONN_HANDLE_INVALID;
 
+    // indicate that imu data notification is disabled
+    p_service->is_imu_data_notification_enabled = false;
+    p_service->is_imu_data_transfer_complete = true;
+
     // add the service
     err_code = sd_ble_gatts_service_add(BLE_GATTS_SRVC_TYPE_PRIMARY,
                                         &service_uuid,
@@ -373,11 +389,18 @@ void service_init(ble_os_t * p_service)
 }
 
 // Function to be called when updating characteristic value with IMU data
-void imu_characteristic_update(ble_os_t *p_service, IMU_DATA *imu_data, int16_t length)
+void characteristic_update_imu_data(ble_os_t *p_service, IMU_DATA *imu_data, int16_t length)
 {
     uint32_t err_code;
+
+    // wait for last transfer to complete before transferring more data
+    // this prevents the NRF_ERROR_RESOURCES error but slows down data transfer to a trickle.
+    //do {} while (p_service->is_imu_data_transfer_complete == false);
+    // this works better but still misses about half of the data transfer
+    //if (p_service->is_imu_data_transfer_complete == false) return;
+
     // update characteristic value
-    if (p_service->conn_handle != BLE_CONN_HANDLE_INVALID)
+    if ((p_service->conn_handle != BLE_CONN_HANDLE_INVALID) && (p_service->is_imu_data_notification_enabled == true))
     {
         uint16_t               len = length;
         ble_gatts_hvx_params_t hvx_params;
@@ -389,6 +412,7 @@ void imu_characteristic_update(ble_os_t *p_service, IMU_DATA *imu_data, int16_t 
         hvx_params.p_len  = &len;
         hvx_params.p_data = (uint8_t*)imu_data;  
 
+        p_service->is_imu_data_transfer_complete = false;
         err_code = sd_ble_gatts_hvx(p_service->conn_handle, &hvx_params);
         if (err_code == NRF_SUCCESS)
         {
@@ -403,7 +427,7 @@ void imu_characteristic_update(ble_os_t *p_service, IMU_DATA *imu_data, int16_t 
 
 
 // Function to be called when updating characteristic value with IMU data
-void imu_deviceid_characteristic_update(ble_os_t *p_service)
+void characteristic_update_imu_deviceid(ble_os_t *p_service)
 {
     uint32_t err_code;
     // update characteristic value
@@ -429,7 +453,7 @@ void imu_deviceid_characteristic_update(ble_os_t *p_service)
 
 
 // Function to be called when updating characteristic value with IMU data
-void imu_resolution_characteristic_update(ble_os_t *p_service, uint32_t resolution)
+void characteristic_update_imu_resolution(ble_os_t *p_service, uint32_t resolution)
 {
     uint32_t err_code = 0xffffffff;
     // update characteristic value

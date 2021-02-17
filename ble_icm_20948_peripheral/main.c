@@ -477,7 +477,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
 
         case BLE_GAP_EVT_CONNECTED:
             NRF_LOG_INFO("Connected.");
-            inv_icm20948_set_sleep_mode(false);
+            //inv_icm20948_set_sleep_mode(false);
             err_code = bsp_indication_set(BSP_INDICATE_CONNECTED);
             APP_ERROR_CHECK(err_code);
             m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
@@ -844,7 +844,7 @@ int main(void)
             data_ready = false;
             imu_data.deviceid = m_service.deviceid;
             nrf_gpio_pin_set(PIN_OUT);
-            imu_characteristic_update(&m_service, &imu_data, sizeof(IMU_DATA));
+            characteristic_update_imu_data(&m_service, &imu_data, sizeof(IMU_DATA));
         }
         idle_state_handle();
     }
