@@ -11,7 +11,7 @@ Here is a photo of the hardware that I'm using for this experiment.  I'll add mo
 <li>SparkFun nRF52832 Breakout (used as ble_peripheral)</li>
 <li>SparkFun 9DoF IMU Breakout - ICM-20948</li>
 <li>Segger J-Link EDU Mini Programmer</li>
-<li>Teensy 4.0</li>
+<li>Teensy 4.0 (set-up as a UART to USB bridge)</li>
 <li>Nordic nRF52 PCA10040 DK (used as ble_central)</li>
 <li>Nordic Semiconductor nRF52840 USB Dongle (used with Nordic nRF Connect)</li>
 </ul>
