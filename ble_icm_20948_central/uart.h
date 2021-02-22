@@ -23,7 +23,7 @@
 
 
 /**@brief DB Discovery event handler type. */
-typedef void (* ble_process_input_string_handler_t)(char *p_string, uint32_t length);
+typedef void (* ble_process_input_string_handler_t)(uint8_t *p_string, uint32_t length);
 
 //ret_code_t write_uart(uint8_t value, char* string);
 void uart_init(ble_process_input_string_handler_t ble_process_input_string_handler);

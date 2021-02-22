@@ -18,14 +18,14 @@
  * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-
-//#include "nordic_common.h"
+#include "sdk_config.h"
+#include "nordic_common.h"
 #include "app_error.h"
 #include "app_uart.h"
-//#include "ble_db_discovery.h"
-//#include "app_timer.h"
-//#include "app_util.h"
-//#include "bsp_btn_ble.h"
+#include "ble_db_discovery.h"
+#include "app_timer.h"
+#include "app_util.h"
+#include "bsp_btn_ble.h"
 //#include "ble.h"
 //#include "ble_gap.h"
 //#include "ble_hci.h"
@@ -58,7 +58,6 @@ void uart_event_handle(app_uart_evt_t * p_event)
 {
     static uint8_t data_array[BLE_NUS_MAX_DATA_LEN];
     static uint16_t index = 0;
-    uint32_t ret_val;
 
     switch (p_event->evt_type)
     {

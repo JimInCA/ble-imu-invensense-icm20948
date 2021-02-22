@@ -22,7 +22,7 @@
 #define USBD_H__
 
 
-typedef void (* ble_process_input_string_handler_t)(char *p_string, uint32_t length);
+typedef void (* ble_process_input_string_handler_t)(uint8_t *p_string, uint32_t length);
 
 void host_interface_init(ble_process_input_string_handler_t ble_process_input_string_handler);
 
