@@ -59,7 +59,7 @@
 #include "nrf_pwr_mgmt.h"
 #include "nrf_ble_scan.h"
 
-#ifdef BOARD_PCA10059
+#ifdef BOARD_PCA10059_USBD_SUPPORTED
 #include "app_usbd_cdc_acm.h"
 #endif
 
@@ -68,7 +68,7 @@
 #include "nrf_log_default_backends.h"
 
 #include "imu.h"
-#ifdef BOARD_PCA10059
+#ifdef BOARD_PCA10059_USBD_SUPPORTED
 #include "usbd.h"
 #else
 #include "uart.h"
@@ -229,8 +229,6 @@ static void ble_nus_chars_received_uart_print(uint8_t * p_data, uint16_t data_le
     //ret_code_t ret_val;
     uint32_t i, j;
     uint8_t data_array[m_ble_nus_max_data_len*5+2];
-    uint32_t i, j;
-    uint8_t data_array[m_ble_nus_max_data_len*5];
 
     char ascii[16] = {'0', '1', '2', '3', '4', '5', '6', '7',
                       '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
@@ -250,7 +248,7 @@ static void ble_nus_chars_received_uart_print(uint8_t * p_data, uint16_t data_le
 }
 
 
-void ble_process_input_string_handler(char *data_array, uint32_t length)
+void ble_process_input_string_handler(uint8_t *data_array, uint32_t length)
 {
     uint16_t index = length;
     uint32_t ret_val;
@@ -595,7 +593,7 @@ int main(void)
     // Initialize.
     log_init();
     timer_init();
-#ifdef BOARD_PCA10059
+#ifdef BOARD_PCA10059_USBD_SUPPORTED
     usbd_init(ble_process_input_string_handler);
 #else
     uart_init(ble_process_input_string_handler);
@@ -616,7 +614,7 @@ int main(void)
     // Enter main loop.
     for (;;)
     {
-#ifdef BOARD_PCA10059
+#ifdef BOARD_PCA10059_USBD_SUPPORTED
         while (app_usbd_event_queue_process())
         {
             /* Nothing to do */
