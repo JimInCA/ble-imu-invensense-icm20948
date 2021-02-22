@@ -76,7 +76,7 @@ static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
 #define CDC_ACM_DATA_EPIN       NRF_DRV_USBD_EPIN1
 #define CDC_ACM_DATA_EPOUT      NRF_DRV_USBD_EPOUT1
 
-static char m_cdc_data_array[BLE_NUS_MAX_DATA_LEN];
+static uint8_t m_cdc_data_array[BLE_NUS_MAX_DATA_LEN];
 
 /** @brief CDC_ACM class instance */
 APP_USBD_CDC_ACM_GLOBAL_DEF(m_app_cdc_acm,
