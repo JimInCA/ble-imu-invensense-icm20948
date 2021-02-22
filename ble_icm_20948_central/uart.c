@@ -108,7 +108,7 @@ void output_string(uint8_t *data_array, uint32_t length)
         }
     }
 
-    return ret_val;
+    //return ret_val;
 }
 
 

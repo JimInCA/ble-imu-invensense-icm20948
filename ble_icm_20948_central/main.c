@@ -59,12 +59,20 @@
 #include "nrf_pwr_mgmt.h"
 #include "nrf_ble_scan.h"
 
+#ifdef BOARD_PCA10059
+#include "app_usbd_cdc_acm.h"
+#endif
+
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
 
 #include "imu.h"
+#ifdef BOARD_PCA10059
+#include "usbd.h"
+#else
 #include "uart.h"
+#endif
 
 
 #define APP_BLE_CONN_CFG_TAG    1                                       /**< Tag that refers to the BLE stack configuration set with @ref sd_ble_cfg_set. The default tag is @ref BLE_CONN_CFG_TAG_DEFAULT. */
@@ -218,14 +226,16 @@ static void db_disc_handler(ble_db_discovery_evt_t * p_evt)
  */
 static void ble_nus_chars_received_uart_print(uint8_t * p_data, uint16_t data_len)
 {
-    ret_code_t ret_val;
+    //ret_code_t ret_val;
+    uint32_t i, j;
+    uint8_t data_array[m_ble_nus_max_data_len*5+2];
     uint32_t i, j;
     uint8_t data_array[m_ble_nus_max_data_len*5];
 
     char ascii[16] = {'0', '1', '2', '3', '4', '5', '6', '7',
                       '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
 
-    for (i = 0, j = 0; i < data_len; i++)
+    for (i = 0, j = 0; i < data_len && j < BLE_NUS_MAX_DATA_LEN-2; i++)
     {
         data_array[j++] = '0';
         data_array[j++] = 'x';
@@ -585,8 +595,13 @@ int main(void)
     // Initialize.
     log_init();
     timer_init();
+#ifdef BOARD_PCA10059
+    usbd_init(ble_process_input_string_handler);
+#else
     uart_init(ble_process_input_string_handler);
+#endif
     buttons_leds_init();
+
     db_discovery_init();
     power_management_init();
     ble_stack_init();
@@ -601,6 +616,12 @@ int main(void)
     // Enter main loop.
     for (;;)
     {
+#ifdef BOARD_PCA10059
+        while (app_usbd_event_queue_process())
+        {
+            /* Nothing to do */
+        }
+#endif
         idle_state_handle();
     }
 }
