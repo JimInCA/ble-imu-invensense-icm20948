@@ -40,6 +40,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
+
 #include "nordic_common.h"
 #include "app_error.h"
 #include "app_uart.h"
@@ -58,18 +59,24 @@
 #include "nrf_pwr_mgmt.h"
 #include "nrf_ble_scan.h"
 
+#ifdef BOARD_PCA10059
+#include "app_usbd_cdc_acm.h"
+#endif
+
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
 
 #include "imu.h"
+#ifdef BOARD_PCA10059
+#include "usbd.h"
+#else
+#include "uart.h"
+#endif
 
 
 #define APP_BLE_CONN_CFG_TAG    1                                       /**< Tag that refers to the BLE stack configuration set with @ref sd_ble_cfg_set. The default tag is @ref BLE_CONN_CFG_TAG_DEFAULT. */
 #define APP_BLE_OBSERVER_PRIO   3                                       /**< BLE observer priority of the application. There is no need to modify this value. */
-
-#define UART_TX_BUF_SIZE       1024                                     /**< UART TX buffer size. */
-#define UART_RX_BUF_SIZE       1024                                     /**< UART RX buffer size. */
 
 #define NUS_SERVICE_UUID_TYPE   BLE_UUID_TYPE_VENDOR_BEGIN              /**< UUID type for the Nordic UART Service (vendor specific). */
 
@@ -212,23 +219,6 @@ static void db_disc_handler(ble_db_discovery_evt_t * p_evt)
 }
 
 
-static ret_code_t write_uart(uint8_t value, char* string)
-{
-    ret_code_t ret_val;
-
-    do
-    {
-        ret_val = app_uart_put(value);
-        if ((ret_val != NRF_SUCCESS) && (ret_val != NRF_ERROR_BUSY))
-        {
-            NRF_LOG_ERROR("%s", string);
-        }
-    } while (ret_val == NRF_ERROR_BUSY);
-
-    return ret_val;
-}
-
-
 /**@brief Function for handling characters received by the Nordic UART Service (NUS).
  *
  * @details This function takes a list of characters of length data_len and prints the characters out on UART.
@@ -236,169 +226,46 @@ static ret_code_t write_uart(uint8_t value, char* string)
  */
 static void ble_nus_chars_received_uart_print(uint8_t * p_data, uint16_t data_len)
 {
-/*
-    ret_code_t ret_val;
-
-    NRF_LOG_DEBUG("Receiving data.");
-    NRF_LOG_HEXDUMP_DEBUG(p_data, data_len);
-
-    for (uint32_t i = 0; i < data_len; i++)
-    {
-        do
-        {
-            ret_val = app_uart_put(p_data[i]);
-            if ((ret_val != NRF_SUCCESS) && (ret_val != NRF_ERROR_BUSY))
-            {
-                NRF_LOG_ERROR("app_uart_put failed for index 0x%04x.", i);
-                APP_ERROR_CHECK(ret_val);
-            }
-        } while (ret_val == NRF_ERROR_BUSY);
-    }
-    if (p_data[data_len-1] == '\r')
-    {
-        while (app_uart_put('\n') == NRF_ERROR_BUSY);
-    }
-    if (ECHOBACK_BLE_UART_DATA)
-    {
-        // Send data back to the peripheral.
-        do
-        {
-            ret_val = ble_nus_c_string_send(&m_ble_nus_c, p_data, data_len);
-            if ((ret_val != NRF_SUCCESS) && (ret_val != NRF_ERROR_BUSY))
-            {
-                NRF_LOG_ERROR("Failed sending NUS message. Error 0x%x. ", ret_val);
-                APP_ERROR_CHECK(ret_val);
-            }
-        } while (ret_val == NRF_ERROR_BUSY);
-    }
-*/
-
-    ret_code_t ret_val;
+    //ret_code_t ret_val;
+    uint32_t i, j;
+    uint8_t data_array[m_ble_nus_max_data_len*5+2];
 
     char ascii[16] = {'0', '1', '2', '3', '4', '5', '6', '7',
                       '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
 
-    for (uint32_t i = 0; i < data_len; i++)
+    for (i = 0, j = 0; i < data_len && j < BLE_NUS_MAX_DATA_LEN-2; i++)
     {
-        ret_val = write_uart('0', "app_uart_put failed for 0.");
-        ret_val = write_uart('x', "app_uart_put failed for x.");
-        do
-        {
-            uint32_t index = (p_data[i] & 0xf0) >> 4;
-            char character = ascii[index];
-            ret_val = app_uart_put(ascii[index]);
-            if ((ret_val != NRF_SUCCESS) && (ret_val != NRF_ERROR_BUSY))
-            {
-                NRF_LOG_ERROR("app_uart_put failed for index 0x%04x.", i);
-                //APP_ERROR_CHECK(ret_val);
-            }
-        } while (ret_val == NRF_ERROR_BUSY);
-        do
-        {
-            ret_val = app_uart_put(ascii[(p_data[i] & 0x0f)]);
-            if ((ret_val != NRF_SUCCESS) && (ret_val != NRF_ERROR_BUSY))
-            {
-                NRF_LOG_ERROR("app_uart_put failed for index 0x%04x.", i);
-                //APP_ERROR_CHECK(ret_val);
-            }
-        } while (ret_val == NRF_ERROR_BUSY);
-        ret_val = write_uart(' ', "app_uart_put failed for [space].");
+        data_array[j++] = '0';
+        data_array[j++] = 'x';
+        data_array[j++] = ascii[(p_data[i] & 0xf0) >> 4];
+        data_array[j++] = ascii[(p_data[i] & 0x0f) >> 0];
+        data_array[j++] = ' ';
     }
-    ret_val = write_uart('\r', "app_uart_put failed for \\r.");
-    ret_val = write_uart('\n', "app_uart_put failed for \\n.");
+    data_array[j++] = '\r';
+    data_array[j++] = '\n';
 
-/*
-    // This makes the output to the UART compatable with my python imu gui.
-    IMU_DATA *imu_data = (IMU_DATA*)p_data;
-    uint8_t message[128];
-    static uint32_t count = 0;
-    uint32_t i;
-    
-    // calling sprintf slows the system down tremendously.
-    sprintf((char*)message, 
-           "%ld: "
-           "ax = %d, ay = %d, az = %d, "
-           "gx = %d, gy = %d, gz = %d\r\n",
-           count++, imu_data->ax, imu_data->ay, imu_data->az, imu_data->gx, imu_data->gy, imu_data->gz);
-
-    i = 0;
-    do 
-    {
-        app_uart_put(message[i]);
-    } while (message[i++] != '\n');
-*/
+    output_string(data_array, j);
 }
 
 
-/**@brief   Function for handling app_uart events.
- *
- * @details This function receives a single character from the app_uart module and appends it to
- *          a string. The string is sent over BLE when the last character received is a
- *          'new line' '\n' (hex 0x0A) or if the string reaches the maximum data length.
- */
-void uart_event_handle(app_uart_evt_t * p_event)
+void ble_process_input_string_handler(char *data_array, uint32_t length)
 {
-    static uint8_t data_array[BLE_NUS_MAX_DATA_LEN];
-    static uint16_t index = 0;
+    uint16_t index = length;
     uint32_t ret_val;
 
-    switch (p_event->evt_type)
+    ret_val = NRF_SUCCESS;  // initialize to good value in case user input something other than r/s
+    if ((index >= 2) && ((data_array[0] == 'r') || (data_array[0] == 'R')))
     {
-        /**@snippet [Handling data from UART] */
-        case APP_UART_DATA_READY:
-            UNUSED_VARIABLE(app_uart_get(&data_array[index]));
-            index++;
-
-            if ((data_array[index - 1] == '\n') ||
-                (data_array[index - 1] == '\r') ||
-                (index >= (m_ble_nus_max_data_len)))
-            {
-                /*
-                NRF_LOG_DEBUG("Ready to send data over BLE NUS");
-                NRF_LOG_HEXDUMP_DEBUG(data_array, index);
-
-                do
-                {
-                    ret_val = ble_nus_c_string_send(&m_ble_nus_c, data_array, index);
-                    if ( (ret_val != NRF_ERROR_INVALID_STATE) && (ret_val != NRF_ERROR_RESOURCES) )
-                    {
-                        APP_ERROR_CHECK(ret_val);
-                    }
-                } while (ret_val == NRF_ERROR_RESOURCES);
-                */
-
-                ret_val = NRF_SUCCESS;  // initialize to good value in case user input something other than r/s
-                if ((index >= 2) && ((data_array[0] == 'r') || (data_array[0] == 'R')))
-                {
-                    ret_val = ble_nus_c_tx_notif_enable(&m_ble_nus_c, true);
-                }
-                else if ((index >= 2) && ((data_array[0] == 's') || (data_array[0] == 'S')))
-                {
-                    ret_val = ble_nus_c_tx_notif_enable(&m_ble_nus_c, false);
-                }
-                if ((ret_val != NRF_SUCCESS) && (ret_val != NRF_ERROR_BUSY))
-                {
-                    NRF_LOG_ERROR("ble_nus_c_tx_notif_enable() failed to set notify");
-                    APP_ERROR_CHECK(ret_val);
-                }
-
-                index = 0;
-            }
-            break;
-
-        /**@snippet [Handling data from UART] */
-        case APP_UART_COMMUNICATION_ERROR:
-            NRF_LOG_ERROR("Communication error occurred while handling UART.");
-            APP_ERROR_HANDLER(p_event->data.error_communication);
-            break;
-
-        case APP_UART_FIFO_ERROR:
-            NRF_LOG_ERROR("Error occurred in FIFO module used by UART.");
-            APP_ERROR_HANDLER(p_event->data.error_code);
-            break;
-
-        default:
-            break;
+        ret_val = ble_nus_c_tx_notif_enable(&m_ble_nus_c, true);
+    }
+    else if ((index >= 2) && ((data_array[0] == 's') || (data_array[0] == 'S')))
+    {
+        ret_val = ble_nus_c_tx_notif_enable(&m_ble_nus_c, false);
+    }
+    if ((ret_val != NRF_SUCCESS) && (ret_val != NRF_ERROR_BUSY))
+    {
+        NRF_LOG_ERROR("ble_nus_c_tx_notif_enable() failed to set notify");
+        APP_ERROR_CHECK(ret_val);
     }
 }
 
@@ -636,32 +503,6 @@ void bsp_event_handler(bsp_event_t event)
     }
 }
 
-/**@brief Function for initializing the UART. */
-static void uart_init(void)
-{
-    ret_code_t err_code;
-
-    app_uart_comm_params_t const comm_params =
-    {
-        .rx_pin_no    = RX_PIN_NUMBER,
-        .tx_pin_no    = TX_PIN_NUMBER,
-        .rts_pin_no   = RTS_PIN_NUMBER,
-        .cts_pin_no   = CTS_PIN_NUMBER,
-        .flow_control = APP_UART_FLOW_CONTROL_DISABLED,
-        .use_parity   = false,
-        .baud_rate    = UART_BAUDRATE_BAUDRATE_Baud115200
-    };
-
-    APP_UART_FIFO_INIT(&comm_params,
-                       UART_RX_BUF_SIZE,
-                       UART_TX_BUF_SIZE,
-                       uart_event_handle,
-                       APP_IRQ_PRIORITY_LOWEST,
-                       err_code);
-
-    APP_ERROR_CHECK(err_code);
-}
-
 /**@brief Function for initializing the Nordic UART Service (NUS) client. */
 static void nus_c_init(void)
 {
@@ -752,8 +593,13 @@ int main(void)
     // Initialize.
     log_init();
     timer_init();
-    uart_init();
+#ifdef BOARD_PCA10059
+    usbd_init(ble_process_input_string_handler);
+#else
+    uart_init(ble_process_input_string_handler);
+#endif
     buttons_leds_init();
+
     db_discovery_init();
     power_management_init();
     ble_stack_init();
@@ -762,13 +608,18 @@ int main(void)
     scan_init();
 
     // Start execution.
-    printf("BLE UART central example started. printf()\r\n");
-    NRF_LOG_INFO("BLE UART central example started. NRF_LOG_INFO()");
+    NRF_LOG_INFO("BLE UART central example started.");
     scan_start();
 
     // Enter main loop.
     for (;;)
     {
+#ifdef BOARD_PCA10059
+        while (app_usbd_event_queue_process())
+        {
+            /* Nothing to do */
+        }
+#endif
         idle_state_handle();
     }
 }
