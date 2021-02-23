@@ -108,9 +108,7 @@
       <file file_name="../../../main.c" />
       <file file_name="../config/sdk_config.h" />
       <file file_name="../../../ble_nus_c.c" />
-      <file file_name="../../../usbd.c">
-        <configuration Name="Debug" build_exclude_from_build="No" />
-      </file>
+      <file file_name="../../../usbd.c" />
     </folder>
     <folder Name="nRF_Segger_RTT">
       <file file_name="../../../../../../external/segger_rtt/SEGGER_RTT.c" />

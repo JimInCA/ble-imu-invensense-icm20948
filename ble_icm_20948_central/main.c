@@ -226,9 +226,8 @@ static void db_disc_handler(ble_db_discovery_evt_t * p_evt)
  */
 static void ble_nus_chars_received_uart_print(uint8_t * p_data, uint16_t data_len)
 {
-    //ret_code_t ret_val;
     uint32_t i, j;
-    uint8_t data_array[m_ble_nus_max_data_len*5+2];
+    uint8_t data_array[BLE_NUS_MAX_DATA_LEN];
 
     char ascii[16] = {'0', '1', '2', '3', '4', '5', '6', '7',
                       '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
