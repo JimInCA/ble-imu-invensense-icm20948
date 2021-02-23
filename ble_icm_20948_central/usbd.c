@@ -52,16 +52,13 @@
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
-
 #include "usbd.h"
 
 
-#define ENDLINE_STRING "\r\n"
-
-#define LED_BLE_NUS_CONN (BSP_BOARD_LED_0)
-#define LED_BLE_NUS_RX   (BSP_BOARD_LED_1)
-#define LED_CDC_ACM_CONN (BSP_BOARD_LED_2)
-#define LED_CDC_ACM_RX   (BSP_BOARD_LED_3)
+#define LED_BLE_NUS_CONN (BSP_BOARD_LED_0)  // green
+#define LED_BLE_NUS_RX   (BSP_BOARD_LED_1)  // rgb red
+#define LED_CDC_ACM_CONN (BSP_BOARD_LED_2)  // rgb green
+#define LED_CDC_ACM_RX   (BSP_BOARD_LED_3)  // rgb blue
 
 #define LED_BLINK_INTERVAL 800
 
@@ -254,22 +251,21 @@ static void usbd_user_ev_handler(app_usbd_event_type_t event)
     }
 }
 
-static uint8_t static_data_array[256];
-static uint32_t static_length;
 
 void output_string(uint8_t *data_array, uint32_t length)
 {
     ret_code_t ret_val;
 
+    bsp_board_led_invert(LED_BLE_NUS_RX);
+
     // this is required to prevent the data from being corrupted
     while (m_usb_evt_tx_complete == false) {}
-    static_length = length;
-    memcpy(static_data_array, data_array, static_length);
+    memcpy(m_nus_data_array, data_array, length);
 
     m_usb_evt_tx_complete = false;
     ret_val = app_usbd_cdc_acm_write(&m_app_cdc_acm,
-                                      static_data_array,
-                                      static_length);
+                                      m_nus_data_array,
+                                      length);
     if(ret_val != NRF_SUCCESS)
     {
         NRF_LOG_INFO("CDC ACM unavailable, data received: %s", m_nus_data_array);
