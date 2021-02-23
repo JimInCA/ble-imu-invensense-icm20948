@@ -1,6 +1,9 @@
 <!DOCTYPE CrossStudio_Project_File>
-<solution Name="ble_icm_20948_central_pca10059_s140" target="8" version="2">
-  <project Name="ble_icm_20948_central_pca10059_s140">
+<solution
+  Name="ble_icm_20948_central_pca10059u_s140"
+  target="8"
+  version="2">
+  <project Name="ble_icm_20948_central_pca10059u_s140">
     <configuration
       Name="Common"
       arm_architecture="v7EM"

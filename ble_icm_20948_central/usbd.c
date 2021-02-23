@@ -98,6 +98,8 @@ static char m_nus_data_array[BLE_NUS_MAX_DATA_LEN];
 
 static bool m_usb_connected = false;
 
+static bool m_usb_evt_tx_complete = true;
+
 ble_process_input_string_handler_t ble_process_input_string;
 
 /**
@@ -156,6 +158,7 @@ static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
             break;
 
         case APP_USBD_CDC_ACM_USER_EVT_TX_DONE:
+            m_usb_evt_tx_complete = true;
             break;
 
         case APP_USBD_CDC_ACM_USER_EVT_RX_DONE:
@@ -251,14 +254,22 @@ static void usbd_user_ev_handler(app_usbd_event_type_t event)
     }
 }
 
+static uint8_t static_data_array[256];
+static uint32_t static_length;
 
 void output_string(uint8_t *data_array, uint32_t length)
 {
     ret_code_t ret_val;
 
+    // this is required to prevent the data from being corrupted
+    while (m_usb_evt_tx_complete == false) {}
+    static_length = length;
+    memcpy(static_data_array, data_array, static_length);
+
+    m_usb_evt_tx_complete = false;
     ret_val = app_usbd_cdc_acm_write(&m_app_cdc_acm,
-                                      data_array,
-                                      length);
+                                      static_data_array,
+                                      static_length);
     if(ret_val != NRF_SUCCESS)
     {
         NRF_LOG_INFO("CDC ACM unavailable, data received: %s", m_nus_data_array);
