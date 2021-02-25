@@ -261,6 +261,29 @@ void ble_process_input_string_handler(uint8_t *data_array, uint32_t length)
     {
         ret_val = ble_nus_c_tx_notif_enable(&m_ble_nus_c, false);
     }
+    else if ((index >= 3) && ((data_array[0] == 'a') || (data_array[0] == 'A') || (data_array[0] == 'g') || (data_array[0] == 'G'))
+                          && ((data_array[1] == '0') || (data_array[1] == '1') || (data_array[1] == '2') || (data_array[1] == '3')))
+    {
+        static uint8_t byte_array[4] = {0x00, 0x00, 0x00, 0x00};
+        uint8_t resolution = data_array[1] - '0';
+        if ((data_array[0] == 'a') || (data_array[0] == 'A'))
+        {
+            byte_array[0] = resolution;
+        }
+        else if ((data_array[0] == 'g') || (data_array[0] == 'G'))
+        {
+            byte_array[1] = resolution;
+        }
+
+        ret_val  = ble_nus_c_rx_notif_enable(&m_ble_nus_c, true);
+        ret_val += ble_nus_c_string_send(&m_ble_nus_c, byte_array, 4);
+        ret_val += ble_nus_c_rx_notif_enable(&m_ble_nus_c, false);
+    }
+    else if ((index >= 3) && ((data_array[0] == 'i') || (data_array[0] == 'I'))
+                          && ((data_array[1] == 'd') || (data_array[1] == 'D')))
+    {
+        ret_val = ble_nus_c_id_receive(&m_ble_nus_c);
+    }
     if ((ret_val != NRF_SUCCESS) && (ret_val != NRF_ERROR_BUSY))
     {
         NRF_LOG_ERROR("ble_nus_c_tx_notif_enable() failed to set notify");
@@ -295,6 +318,10 @@ static void ble_nus_c_evt_handler(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t con
             break;
 
         case BLE_NUS_C_EVT_NUS_TX_EVT:
+            ble_nus_chars_received_uart_print(p_ble_nus_evt->p_data, p_ble_nus_evt->data_len);
+            break;
+
+        case BLE_NUS_C_EVT_READ_RSP:
             ble_nus_chars_received_uart_print(p_ble_nus_evt->p_data, p_ble_nus_evt->data_len);
             break;
 
@@ -336,6 +363,26 @@ static bool shutdown_handler(nrf_pwr_mgmt_evt_t event)
 
 NRF_PWR_MGMT_HANDLER_REGISTER(shutdown_handler, APP_SHUTDOWN_HANDLER_PRIORITY);
 
+static void on_read_response(ble_nus_c_t * p_ble_nus_c, ble_evt_t const * p_ble_evt)
+{
+    // Check if the event if on the link for this instance
+    if (p_ble_nus_c->conn_handle != p_ble_evt->evt.gattc_evt.conn_handle)
+    {
+        return;
+    }
+    NRF_LOG_INFO("conn_handle: 0x%04x", p_ble_evt->evt.gattc_evt.conn_handle);
+
+    // Check if this is a AMT RCB read response.
+    if (p_ble_evt->evt.gattc_evt.params.read_rsp.handle == p_ble_nus_c->handles.nus_id_handle)
+    {
+        ble_nus_c_evt_t ble_nus_evt;
+        ble_nus_evt.evt_type             = BLE_NUS_C_EVT_READ_RSP;
+        ble_nus_evt.conn_handle = p_ble_evt->evt.gattc_evt.conn_handle;
+        ble_nus_evt.p_data = p_ble_evt->evt.gattc_evt.params.read_rsp.data;
+        ble_nus_evt.data_len = p_ble_evt->evt.gattc_evt.params.read_rsp.len;
+        p_ble_nus_c->evt_handler(p_ble_nus_c, &ble_nus_evt);
+    }
+}
 
 /**@brief Function for handling BLE events.
  *
@@ -345,6 +392,7 @@ NRF_PWR_MGMT_HANDLER_REGISTER(shutdown_handler, APP_SHUTDOWN_HANDLER_PRIORITY);
 static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
 {
     ret_code_t            err_code;
+    ble_nus_c_t * p_ble_nus_c = (ble_nus_c_t *)p_context;
     ble_gap_evt_t const * p_gap_evt = &p_ble_evt->evt.gap_evt;
 
     switch (p_ble_evt->header.evt_id)
@@ -416,6 +464,10 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             APP_ERROR_CHECK(err_code);
             break;
 
+        case BLE_GATTC_EVT_READ_RSP:
+            on_read_response(p_ble_nus_c, p_ble_evt);
+            break;
+
         default:
             break;
     }
@@ -444,7 +496,7 @@ static void ble_stack_init(void)
     APP_ERROR_CHECK(err_code);
 
     // Register a handler for BLE events.
-    NRF_SDH_BLE_OBSERVER(m_ble_observer, APP_BLE_OBSERVER_PRIO, ble_evt_handler, NULL);
+    NRF_SDH_BLE_OBSERVER(m_ble_observer, APP_BLE_OBSERVER_PRIO, ble_evt_handler, &m_ble_nus_c);
 }
 
 

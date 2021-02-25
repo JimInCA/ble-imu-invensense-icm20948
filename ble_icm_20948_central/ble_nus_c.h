@@ -106,6 +106,7 @@ NRF_SDH_BLE_OBSERVERS(_name ## _obs,                     \
 #define BLE_UUID_NUS_SERVICE            0xface                      /**< The UUID of the Nordic UART Service. */
 #define BLE_UUID_NUS_RX_CHARACTERISTIC  0xfeed                      /**< The UUID of the RX Characteristic. */
 #define BLE_UUID_NUS_TX_CHARACTERISTIC  0xfade                      /**< The UUID of the TX Characteristic. */
+#define BLE_UUID_NUS_ID_CHARACTERISTIC  0xbead                      /**< The UUID of the ID Characteristic. */
 
 #define OPCODE_LENGTH 1
 #define HANDLE_LENGTH 2
@@ -124,6 +125,7 @@ typedef enum
 {
     BLE_NUS_C_EVT_DISCOVERY_COMPLETE,   /**< Event indicating that the NUS service and its characteristics were found. */
     BLE_NUS_C_EVT_NUS_TX_EVT,           /**< Event indicating that the central received something from a peer. */
+    BLE_NUS_C_EVT_READ_RSP,             /**< Event indicating that the central recieved a read responce */
     BLE_NUS_C_EVT_DISCONNECTED          /**< Event indicating that the NUS server disconnected. */
 } ble_nus_c_evt_type_t;
 
@@ -133,6 +135,8 @@ typedef struct
     uint16_t nus_tx_handle;      /**< Handle of the NUS TX characteristic, as provided by a discovery. */
     uint16_t nus_tx_cccd_handle; /**< Handle of the CCCD of the NUS TX characteristic, as provided by a discovery. */
     uint16_t nus_rx_handle;      /**< Handle of the NUS RX characteristic, as provided by a discovery. */
+    uint16_t nus_rx_cccd_handle; /**< Handle of the CCCD of the NUS RX characteristic, as provided by a discovery. */
+    uint16_t nus_id_handle;      /**< Handle of the NUS RX characteristic, as provided by a discovery. */
 } ble_nus_c_handles_t;
 
 /**@brief Structure containing the NUS event data received from the peer. */
@@ -232,6 +236,9 @@ void ble_nus_c_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context);
  */
 uint32_t ble_nus_c_tx_notif_enable(ble_nus_c_t * p_ble_nus_c, bool notify);
 
+uint32_t ble_nus_c_rx_notif_enable(ble_nus_c_t * p_ble_nus_c, bool notify);
+
+uint32_t ble_nus_c_id_receive(ble_nus_c_t * p_ble_nus_c);
 
 /**@brief Function for sending a string to the server.
  *

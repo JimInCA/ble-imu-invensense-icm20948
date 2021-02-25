@@ -18,9 +18,28 @@
  * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include "nrf_log.h"
+#include "nrf_log_ctrl.h"
+#include "nrf_log_default_backends.h"
+
 #include "imu.h"
 #include "twi.h"
 #include "hal.h"
+
+uint8_t *INV_ICM20948_ACCEL_FSR_ASCII [] = {
+	"INV_ICM20948_ACCEL_FSR_02G",
+	"INV_ICM20948_ACCEL_FSR_04G",
+	"INV_ICM20948_ACCEL_FSR_08G",
+	"INV_ICM20948_ACCEL_FSR_16G"
+};
+
+
+uint8_t *INV_ICM20948_GYRO_FSR_ASCII [] = {
+	"INV_ICM20948_GYRO_FSR_250DPS",
+	"INV_ICM20948_GYRO_FSR_500DPS",
+	"INV_ICM20948_GYRO_FSR_1000DPS",
+	"INV_ICM20948_GYRO_FSR_2000DPS"
+};
 
 
 inv_icm20948_chip_config chip_config_20948 = {
@@ -208,6 +227,7 @@ void inv_icm20948_config_gyro(uint8_t full_scale_select)
     temp &= 0xf9;                                  // clear bit4 and bit3
     temp |= ((full_scale_select & 0x03) << 1);     // set desired bits to set range
     inv_icm20948_write_register(IMU_GYRO_CONFIG_1, temp);
+    NRF_LOG_INFO("Gyroscope FSR: %s", INV_ICM20948_GYRO_FSR_ASCII[(full_scale_select & 0x03)]);
 }
 
 void inv_icm20948_config_accel(uint8_t full_scale_select)
@@ -218,6 +238,7 @@ void inv_icm20948_config_accel(uint8_t full_scale_select)
     temp &= 0xf9;                                  // clear bit2 and bit1
     temp |= ((full_scale_select & 0x03) << 1);     // set desired bits to set range
     inv_icm20948_write_register(IMU_ACCEL_CONFIG, temp);
+    NRF_LOG_INFO("Accelerometer FSR: %s", INV_ICM20948_ACCEL_FSR_ASCII[(full_scale_select & 0x03)]);
 }
 
 uint8_t inv_icm20948_get_device_id(void)

@@ -76,8 +76,8 @@
 
 // Defining 16-bit characteristic UUID
 #define BLE_UUID_CHARACTERISTC_IMU_DATA          0xfade // IMU Data
-#define BLE_UUID_CHARACTERISTC_IMU_DEVICEID      0xfeed // IMU Device ID
-#define BLE_UUID_CHARACTERISTC_IMU_RESOLUTION    0xbead // IMU MEMS Resolution
+#define BLE_UUID_CHARACTERISTC_IMU_DEVICEID      0xbead // IMU Device ID
+#define BLE_UUID_CHARACTERISTC_IMU_RESOLUTION    0xfeed // IMU MEMS Resolution
 
 // This structure contains various status information for the service. 
 // The name is based on the naming convention used in Nordics SDKs. 
