@@ -83,6 +83,19 @@
 #define ECHOBACK_BLE_UART_DATA  0                                       /**< Echo the UART data that is received over the Nordic UART Service (NUS) back to the sender. */
 
 
+// the following holds the current settings for the accel, gyro, and mag full scale resolutions
+static uint8_t mems_fsr_array[4] = {0x00, 0x00, 0x00, 0x00};
+// retrieve the fsr settings from the peripheral and update saved values
+static void ble_nus_chars_received_fsr(uint8_t const * p_data, uint16_t data_len)
+{
+    uint32_t i;
+    for (i = 0; i < data_len; i++)
+    {
+        mems_fsr_array[i] = p_data[i];
+    }
+}
+
+
 BLE_NUS_C_DEF(m_ble_nus_c);                                             /**< BLE Nordic UART Service (NUS) client instance. */
 NRF_BLE_GATT_DEF(m_gatt);                                               /**< GATT module instance. */
 BLE_DB_DISCOVERY_DEF(m_db_disc);                                        /**< Database discovery module instance. */
@@ -224,7 +237,7 @@ static void db_disc_handler(ble_db_discovery_evt_t * p_evt)
  * @details This function takes a list of characters of length data_len and prints the characters out on UART.
  *          If @ref ECHOBACK_BLE_UART_DATA is set, the data is sent back to sender.
  */
-static void ble_nus_chars_received_uart_print(uint8_t * p_data, uint16_t data_len)
+static void ble_nus_chars_received_uart_print(uint8_t const * p_data, uint16_t data_len)
 {
     uint32_t i, j;
     uint8_t data_array[BLE_NUS_MAX_DATA_LEN];
@@ -261,22 +274,25 @@ void ble_process_input_string_handler(uint8_t *data_array, uint32_t length)
     {
         ret_val = ble_nus_c_tx_notif_enable(&m_ble_nus_c, false);
     }
+    else if ((index >= 2) && ((data_array[0] == 'd') || (data_array[0] == 'D')))
+    {
+        ret_val = ble_nus_c_tx_receive(&m_ble_nus_c);
+    }
     else if ((index >= 3) && ((data_array[0] == 'a') || (data_array[0] == 'A') || (data_array[0] == 'g') || (data_array[0] == 'G'))
                           && ((data_array[1] == '0') || (data_array[1] == '1') || (data_array[1] == '2') || (data_array[1] == '3')))
     {
-        static uint8_t byte_array[4] = {0x00, 0x00, 0x00, 0x00};
         uint8_t resolution = data_array[1] - '0';
         if ((data_array[0] == 'a') || (data_array[0] == 'A'))
         {
-            byte_array[0] = resolution;
+            mems_fsr_array[0] = resolution;
         }
         else if ((data_array[0] == 'g') || (data_array[0] == 'G'))
         {
-            byte_array[1] = resolution;
+            mems_fsr_array[1] = resolution;
         }
 
         ret_val  = ble_nus_c_rx_notif_enable(&m_ble_nus_c, true);
-        ret_val += ble_nus_c_string_send(&m_ble_nus_c, byte_array, 4);
+        ret_val += ble_nus_c_string_send(&m_ble_nus_c, mems_fsr_array, 4);
         ret_val += ble_nus_c_rx_notif_enable(&m_ble_nus_c, false);
     }
     else if ((index >= 3) && ((data_array[0] == 'i') || (data_array[0] == 'I'))
@@ -312,6 +328,9 @@ static void ble_nus_c_evt_handler(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t con
             err_code = ble_nus_c_handles_assign(p_ble_nus_c, p_ble_nus_evt->conn_handle, &p_ble_nus_evt->handles);
             APP_ERROR_CHECK(err_code);
 
+            err_code = ble_nus_c_fsr_receive(&m_ble_nus_c);
+            APP_ERROR_CHECK(err_code);
+
             err_code = ble_nus_c_tx_notif_enable(p_ble_nus_c, false);
             APP_ERROR_CHECK(err_code);
             NRF_LOG_INFO("Connected to device with Nordic UART Service.");
@@ -323,6 +342,11 @@ static void ble_nus_c_evt_handler(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t con
 
         case BLE_NUS_C_EVT_READ_RSP:
             ble_nus_chars_received_uart_print(p_ble_nus_evt->p_data, p_ble_nus_evt->data_len);
+            break;
+
+        case BLE_NUS_C_EVT_READ_FSR_RSP:
+            // update FSR static array with fsr settings from peripheral
+            ble_nus_chars_received_fsr(p_ble_nus_evt->p_data, p_ble_nus_evt->data_len);
             break;
 
         case BLE_NUS_C_EVT_DISCONNECTED:
@@ -373,10 +397,20 @@ static void on_read_response(ble_nus_c_t * p_ble_nus_c, ble_evt_t const * p_ble_
     NRF_LOG_INFO("conn_handle: 0x%04x", p_ble_evt->evt.gattc_evt.conn_handle);
 
     // Check if this is a AMT RCB read response.
-    if (p_ble_evt->evt.gattc_evt.params.read_rsp.handle == p_ble_nus_c->handles.nus_id_handle)
+    if (    (p_ble_evt->evt.gattc_evt.params.read_rsp.handle == p_ble_nus_c->handles.nus_id_handle)
+         || (p_ble_evt->evt.gattc_evt.params.read_rsp.handle == p_ble_nus_c->handles.nus_tx_handle) )
     {
         ble_nus_c_evt_t ble_nus_evt;
         ble_nus_evt.evt_type             = BLE_NUS_C_EVT_READ_RSP;
+        ble_nus_evt.conn_handle = p_ble_evt->evt.gattc_evt.conn_handle;
+        ble_nus_evt.p_data = p_ble_evt->evt.gattc_evt.params.read_rsp.data;
+        ble_nus_evt.data_len = p_ble_evt->evt.gattc_evt.params.read_rsp.len;
+        p_ble_nus_c->evt_handler(p_ble_nus_c, &ble_nus_evt);
+    }
+    else if (p_ble_evt->evt.gattc_evt.params.read_rsp.handle == p_ble_nus_c->handles.nus_rx_handle)
+    {
+        ble_nus_c_evt_t ble_nus_evt;
+        ble_nus_evt.evt_type             = BLE_NUS_C_EVT_READ_FSR_RSP;
         ble_nus_evt.conn_handle = p_ble_evt->evt.gattc_evt.conn_handle;
         ble_nus_evt.p_data = p_ble_evt->evt.gattc_evt.params.read_rsp.data;
         ble_nus_evt.data_len = p_ble_evt->evt.gattc_evt.params.read_rsp.len;

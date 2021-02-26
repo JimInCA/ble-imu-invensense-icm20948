@@ -349,6 +349,62 @@ uint32_t ble_nus_c_id_receive(ble_nus_c_t * p_ble_nus_c)
 }
 
 
+uint32_t ble_nus_c_tx_receive(ble_nus_c_t * p_ble_nus_c)
+{
+    VERIFY_PARAM_NOT_NULL(p_ble_nus_c);
+
+    ret_code_t err_code;
+    nrf_ble_gq_req_t read_req;
+
+    memset(&read_req, 0, sizeof(nrf_ble_gq_req_t));
+
+    if (p_ble_nus_c->conn_handle == BLE_CONN_HANDLE_INVALID)
+    {
+        NRF_LOG_WARNING("Connection handle invalid.");
+        return NRF_ERROR_INVALID_STATE;
+    }
+
+    read_req.type                        = NRF_BLE_GQ_REQ_GATTC_READ;
+    read_req.error_handler.cb            = gatt_error_handler;
+    read_req.error_handler.p_ctx         = p_ble_nus_c;
+    read_req.params.gattc_read.handle    = p_ble_nus_c->handles.nus_tx_handle;
+    read_req.params.gattc_read.offset    = 0;
+
+    err_code = nrf_ble_gq_item_add(p_ble_nus_c->p_gatt_queue, &read_req, p_ble_nus_c->conn_handle);
+    APP_ERROR_CHECK(err_code);
+
+    return err_code;
+}
+
+
+uint32_t ble_nus_c_fsr_receive(ble_nus_c_t * p_ble_nus_c)
+{
+    VERIFY_PARAM_NOT_NULL(p_ble_nus_c);
+
+    ret_code_t err_code;
+    nrf_ble_gq_req_t read_req;
+
+    memset(&read_req, 0, sizeof(nrf_ble_gq_req_t));
+
+    if (p_ble_nus_c->conn_handle == BLE_CONN_HANDLE_INVALID)
+    {
+        NRF_LOG_WARNING("Connection handle invalid.");
+        return NRF_ERROR_INVALID_STATE;
+    }
+
+    read_req.type                        = NRF_BLE_GQ_REQ_GATTC_READ;
+    read_req.error_handler.cb            = gatt_error_handler;
+    read_req.error_handler.p_ctx         = p_ble_nus_c;
+    read_req.params.gattc_read.handle    = p_ble_nus_c->handles.nus_rx_handle;
+    read_req.params.gattc_read.offset    = 0;
+
+    err_code = nrf_ble_gq_item_add(p_ble_nus_c->p_gatt_queue, &read_req, p_ble_nus_c->conn_handle);
+    APP_ERROR_CHECK(err_code);
+
+    return err_code;
+}
+
+
 uint32_t ble_nus_c_handles_assign(ble_nus_c_t               * p_ble_nus,
                                   uint16_t                    conn_handle,
                                   ble_nus_c_handles_t const * p_peer_handles)

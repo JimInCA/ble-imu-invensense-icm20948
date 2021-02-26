@@ -126,6 +126,7 @@ typedef enum
     BLE_NUS_C_EVT_DISCOVERY_COMPLETE,   /**< Event indicating that the NUS service and its characteristics were found. */
     BLE_NUS_C_EVT_NUS_TX_EVT,           /**< Event indicating that the central received something from a peer. */
     BLE_NUS_C_EVT_READ_RSP,             /**< Event indicating that the central recieved a read responce */
+    BLE_NUS_C_EVT_READ_FSR_RSP,         /**< Event indicating that the central recieved a read fsr responce */
     BLE_NUS_C_EVT_DISCONNECTED          /**< Event indicating that the NUS server disconnected. */
 } ble_nus_c_evt_type_t;
 
@@ -145,7 +146,7 @@ typedef struct
     ble_nus_c_evt_type_t evt_type;
     uint16_t             conn_handle;
     uint16_t             max_data_len;
-    uint8_t            * p_data;
+    uint8_t      const * p_data;
     uint16_t             data_len;
     ble_nus_c_handles_t  handles;     /**< Handles on which the Nordic UART service characteristics were discovered on the peer device. This is filled if the evt_type is @ref BLE_NUS_C_EVT_DISCOVERY_COMPLETE.*/
 } ble_nus_c_evt_t;
@@ -238,7 +239,11 @@ uint32_t ble_nus_c_tx_notif_enable(ble_nus_c_t * p_ble_nus_c, bool notify);
 
 uint32_t ble_nus_c_rx_notif_enable(ble_nus_c_t * p_ble_nus_c, bool notify);
 
+uint32_t ble_nus_c_tx_receive(ble_nus_c_t * p_ble_nus_c);
+
 uint32_t ble_nus_c_id_receive(ble_nus_c_t * p_ble_nus_c);
+
+uint32_t ble_nus_c_fsr_receive(ble_nus_c_t * p_ble_nus_c);
 
 /**@brief Function for sending a string to the server.
  *
