@@ -48,6 +48,67 @@ As for the IDE, I used Segger Embedded Studio which should be avalable on their 
 Testing
 =======
 
-TBD
+Load the firmware onto the devices that you have chosen as central and peripheral.  Hopefully, all of the appropriate wiring has been completed on both devices.  When you power up the peripheral, an LED should begin to flash indicating that the peripheral is advertising.  Assuming that you have a UART to USB device connected to the peripheral, you can now bring up an terminal window and connect it to the peripheral uart output.  I like to use Tera Term.  Now power up the central.  Depending on the device that you are using, one LED should flash briefly and then stay lit.  At the same time, the LED on the peripheral should stop flashing by staying lit as well.  This indicates that the a connection has been completed between the two devices.  You should also see the following in the terminal window that's connected to the peripheral:
 
-To be continued...
+```
+<info> app: Connected.
+<info> app: data cccd write
+<info> app: notification disabled
+```
+If you see this, than all is well, else you'll have some debugging to do... 
+
+At this point, you should be able to bring up a terminal window and connect it to the central's uart output.  In the central's terminal window, type 'r' followed by return/enter.  By doing so, you should then see the data that's being transferred from the peripheral to the central.  It should look something like this:
+
+```
+0xe6 0xe3 0x9e 0xe9 0xae 0xaf 0xce 0x00 0xee 0xff 0x00 0x00 0x66 0x20 0x00 0x00 0x00 0x00 0x00 0x00 0xd7 0x93 0x7b 0xea 0x06 0x00 0x90 0x08
+0xe6 0xe3 0x9e 0xe9 0xe7 0xaf 0xce 0x00 0xfc 0xff 0xf2 0xff 0x60 0x20 0xf1 0xff 0xfa 0xff 0x0a 0x00 0xd7 0x93 0x7b 0xea 0x06 0x00 0x80 0x08
+0xe6 0xe3 0x9e 0xe9 0x5a 0xbc 0xce 0x00 0x22 0x00 0x16 0x00 0x22 0x20 0x07 0x00 0x0d 0x00 0xfb 0xff 0xd7 0x93 0x7b 0xea 0x06 0x00 0x80 0x08
+0xe6 0xe3 0x9e 0xe9 0xcc 0xc8 0xce 0x00 0x12 0x00 0xfc 0xff 0x5a 0x20 0x06 0x00 0x0c 0x00 0xff 0xff 0xd7 0x93 0x7b 0xea 0x06 0x00 0x90 0x08
+0xe6 0xe3 0x9e 0xe9 0x3e 0xd5 0xce 0x00 0x20 0x00 0xfe 0xff 0x84 0x20 0x07 0x00 0x08 0x00 0x01 0x00 0xd7 0x93 0x7b 0xea 0x06 0x00 0xa0 0x08
+0xe6 0xe3 0x9e 0xe9 0xb0 0xe1 0xce 0x00 0x26 0x00 0x30 0x00 0x3c 0x20 0x08 0x00 0x0b 0x00 0xff 0xff 0xd7 0x93 0x7b 0xea 0x06 0x00 0x80 0x08
+```
+
+This is twenty eight bytes of data representing the following IMU structure:
+
+```
+typedef struct _IMU_DATA {
+        uint32_t deviceid;
+        uint32_t time_stamp;
+        int16_t ax;
+        int16_t ay;
+        int16_t az;
+        int16_t gx;
+        int16_t gy;
+        int16_t gz;
+        int16_t mx;
+        int16_t my;
+        int16_t mz;
+        int16_t temperature;
+} IMU_DATA;
+```
+
+The first four bytes of data represent the device ID and are in little endian format.  So the device's ID is actually 0xe99ee3e6.   The other fields in the structure follow.  
+
+To stop the data collection, just type in 's' and hit enter/return.  What's happening is that with the 'r' the central is setting the notify flag in the peripheral which tells it to send data whenever new data is available and the 's' clears the notify flag to instruct the peripheral to stop sending data.
+
+This same signalling is used to set and retrieve features in the peripheral and the imu.  Here is a full list:
+
+| Character | Description |
+| --------- | ----------- |
+| 'r' or 'R'   | Run - start IMU sending data |
+| 's' or 'S'   | Stop - stop imu from sending data |
+| 'ID' or 'ID' | Get device ID |
+| 'a0' or 'A0' | Set Accel FSR to 2G |
+| 'a1' or 'A1' | Set Accel FSR to 4G |
+| 'a2' or 'A2' | Set Accel FSR to 8G |
+| 'a3' or 'A3' | Set Accel FSR to 16G |
+| 'g0' or 'G0' | Set Gyro FSR to 250DPS |
+| 'g1' or 'G1' | Set Gyro FSR to 500DPS |
+| 'g2' or 'G2' | Set Gyro FSR to 1000DPS |
+| 'g3' or 'G3' | Set Gyro FSR to 2000DPS |
+| 'd' or 'D'   | Get last IMU data sample |
+
+Conclusion
+==========
+
+This was an interesting project.  It did help to clarify that differences within Bluetooth Low Energy such as GAP, GATT, Services, Characteristics, and descriptor.  It also gave me a better understanding of the Nordic BLE Driver.  It's not that simple to understand but by developing this example program, thinks have begun to become much clearer.  I just hope that I can retain what I've learned ;-)
