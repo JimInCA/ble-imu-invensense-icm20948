@@ -97,7 +97,7 @@ This same signalling is used to set and retrieve features in the peripheral and 
 | --------- | ----------- |
 | 'r' or 'R'   | Run - start IMU sending data |
 | 's' or 'S'   | Stop - stop imu from sending data |
-| 'ID' or 'ID' | Get device ID |
+| 'id' or 'ID' | Get device ID |
 | 'a0' or 'A0' | Set Accel FSR to 2G |
 | 'a1' or 'A1' | Set Accel FSR to 4G |
 | 'a2' or 'A2' | Set Accel FSR to 8G |

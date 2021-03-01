@@ -80,8 +80,8 @@ extern inv_icm20948_state st;
  */
 static void on_write(ble_os_t * p_service, ble_evt_t const * p_ble_evt)
 {
-    ret_code_t                    err_code;
-    bool is_notification_enabled;
+    //ret_code_t  err_code;
+    //bool        is_notification_enabled;
 
     ble_gatts_evt_write_t const * p_evt_write = &p_ble_evt->evt.gatts_evt.params.write;
 
