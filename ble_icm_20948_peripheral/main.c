@@ -829,6 +829,8 @@ int main(void)
 
     // start execution
     NRF_LOG_INFO("BLE IMU evaluation started.");
+    NRF_LOG_INFO("Device ID: %x", m_service.deviceid);
+
     //application_timers_start();
 
     advertising_start(erase_bonds);
