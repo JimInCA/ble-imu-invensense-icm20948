@@ -114,3 +114,8 @@ Conclusion
 ==========
 
 This was an interesting project.  It did help to clarify that differences within Bluetooth Low Energy such as GAP, GATT, Services, Characteristics, and descriptor.  It also gave me a better understanding of the Nordic BLE Driver.  It's not that simple to understand but by developing this example program, thinks have begun to become much clearer.  I just hope that I can retain what I've learned ;-)
+
+Update 3/11/2021
+================
+
+I added support for the Sparkfun MicroMod ATP Carrier Board configured with the MicroMod nRF5840 Processor Board.  Support was added so that the MicroMod can be used as either the central or peripheral.  
